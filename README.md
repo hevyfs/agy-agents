@@ -2,13 +2,15 @@
 
 Native specialist-agent configuration for **Google Antigravity 2.0 and Antigravity CLI**, adapted from the operating model in `hevyfs/codex-agents`.
 
+> **Runtime status: UNVERIFIED INITIAL CONFIGURATION.** Static validator/unit-test coverage is green, but PR #1 has not yet been executed end-to-end inside an actual Antigravity runtime. Do not describe plugin discovery, skill restrictions, idle-agent reuse, or worktree orchestration as runtime-proven until `docs/runtime-validation.md` contains recorded evidence.
+
 The goal is not to emulate Codex internals. It preserves the useful engineering model while using Antigravity-native primitives:
 
 - the primary session is the orchestrator;
 - narrow specialists own discovery, research, architecture, design, implementation, review, and verification;
 - independent lanes run concurrently;
-- concurrent writers use isolated Antigravity Git worktrees;
-- same-lane dependent follow-up returns to the same idle subagent with retained context;
+- concurrent writers are instructed to use isolated Antigravity Git worktrees;
+- same-lane dependent follow-up is instructed to return to the same idle subagent with retained context;
 - the orchestrator reconciles writer lanes before independent review and final verification.
 
 The repository is itself an Antigravity **plugin**.
@@ -59,26 +61,58 @@ Then open the Antigravity Customizations/Agents UI (or `/agents` in CLI) and con
 
 > The multi-subagent suite targets Antigravity 2.0 and Antigravity CLI. The legacy Antigravity IDE supports skills/rules/plugins, but custom subagent orchestration is documented for 2.0/CLI.
 
-## Using `my-skills`
+## Installing `hevyfs/my-skills`
 
-This repository does **not** vendor `hevyfs/my-skills`. Install those skills separately in an Antigravity-discovered skill location.
+`agy-agents` does **not** vendor `hevyfs/my-skills`. Clone the pinned fork separately and expose each individual skill folder through a path Antigravity actually discovers.
 
-Current Markdown-defined Antigravity agents inherit ambient skills, rules, and subagents. That lets both layers cooperate without machine-specific skill paths:
+Antigravity 2.0 / IDE locations:
 
-**skills define process; agents execute specialist lanes.**
+```text
+<workspace>/.agents/skills/<skill-folder>/
+~/.gemini/config/skills/<skill-folder>/
+```
 
-The primary session owns human-invoked workflows such as `/ask-matt`, `/to-spec`, `/implement`, and `/implement-spec`. Worker prompts restrict themselves to their allowed model-invoked disciplines and explicitly avoid recursively re-entering the workflow that spawned them.
+Antigravity CLI locations:
 
-`skill-routing.json` is the local machine-readable compatibility manifest. This initial port is reconciled against:
+```text
+<workspace>/.agents/skills/<skill-folder>/
+~/.gemini/antigravity-cli/skills/<skill-folder>/
+```
+
+Each exposed folder must contain its original `SKILL.md` and any companion files it references. Copy or symlink the non-deprecated skill directories from `hevyfs/my-skills`, not just the Markdown body.
+
+After skill discovery:
+
+1. Open the target project.
+2. Run `/setup-matt-pocock-skills` once for that project.
+3. Run `/ask-matt` and ask which route fits a multi-ticket spec. Confirm the expected `/to-spec` → `/to-tickets` → `/implement-spec` flow.
+4. Then exercise an agy-agents worker lane.
+
+The primary session owns user-invoked workflows. Role-specific skill declarations are **prompt contracts**, not a demonstrated Antigravity runtime-enforced allowlist. Runtime refusal of recursive `/ask-matt` / `/implement-spec` invocation remains part of the smoke test.
+
+## Compatibility manifest
+
+`skill-routing.json` is the local machine-readable authority for workflow-lane routing and role skill contracts. The always-on rule is a human-readable projection, and CI checks that every manifest route appears there instead of maintaining a second hard-coded routing table in the validator.
+
+This initial port is reconciled against:
 
 - `my-skills@d5628a28514a06d0b587cf838a983321eff1557a`
 - `codex-agents@0eb3b8190e19a55ac4a71620c4e212325940c429`
 
-The dotted lane names in that manifest are **agy-agents internal routing-intent identifiers**, not literal IDs exported by `my-skills`.
+The dotted lane names are **agy-agents internal routing-intent identifiers**, not literal IDs exported by `my-skills`.
 
 ## Antigravity-native orchestration
 
 The installable always-on rule lives at `rules/orchestration.md`.
+
+### Active workflow precedence
+
+Generic routing never weakens an active skill's stricter contract. In particular, `/implement-spec` retains one integration branch, dependency-graph/frontier scheduling, one branch/worktree per ticket implementer, a dedicated merger subagent after each completed ticket, and integrated review only after ticket work is merged.
+
+### Immutable reviewer input
+
+Reviewer stays read-only and has no shell. Before Standards/Spec review, the parent resolves fixed-point/merge-base/head SHAs and materializes the complete diff, changed-file list, and commit list into one immutable snapshot. Both review axes consume that exact same candidate snapshot.
+
 
 ### Writer isolation
 
@@ -136,9 +170,11 @@ The validator checks:
 - `skill-routing.json` stays synchronized with the runtime rule;
 - sticky-lane reuse and concurrent-writer worktree isolation remain present.
 
+Static validation checks declarations and internal consistency; it does not prove Antigravity runtime enforcement.
+
 GitHub Actions runs the same checks on pushes and pull requests.
 
-For runtime validation in Antigravity itself, follow [`docs/smoke-test.md`](docs/smoke-test.md).
+For actual runtime validation, follow [`docs/smoke-test.md`](docs/smoke-test.md) and record evidence in [`docs/runtime-validation.md`](docs/runtime-validation.md).
 
 ## Source model
 

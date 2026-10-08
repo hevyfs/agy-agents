@@ -25,12 +25,23 @@
       "workspace": "branch-when-parallel"
     },
     "implement-spec.implementer": {
-      "workspace": "branch-when-parallel"
+      "workspace": "branch-always",
+      "base": "integration-branch",
+      "scheduling": "dependency-frontier",
+      "integration": "dedicated-merger-subagent"
+    },
+    "code-review.standards": {
+      "review_input": "immutable-parent-materialized-snapshot"
+    },
+    "code-review.spec": {
+      "review_input": "immutable-parent-materialized-snapshot"
     }
   },
   "role_model_invoked_skills": {
     "explorer": [],
-    "librarian": ["research"],
+    "librarian": [
+      "research"
+    ],
     "oracle": [
       "diagnosing-bugs",
       "codebase-design",
@@ -38,8 +49,13 @@
       "performance-optimization",
       "deprecation-and-migration"
     ],
-    "designer": ["prototype"],
-    "fixer": ["verification-planning", "tdd"],
+    "designer": [
+      "prototype"
+    ],
+    "fixer": [
+      "verification-planning",
+      "tdd"
+    ],
     "observer": [],
     "reviewer": [],
     "verifier": []
@@ -101,5 +117,7 @@
     "Invoke only skills listed for the current role in role_model_invoked_skills and only when available.",
     "If a required skill is unavailable, continue only when role instructions are sufficient; otherwise report the capability gap.",
     "Do not vendor or copy my-skills bodies into agent prompts."
-  ]
+  ],
+  "skill_contract_enforcement": "prompt-guidance-only-until-runtime-verified",
+  "runtime_validation_status": "unverified-in-antigravity-runtime"
 }

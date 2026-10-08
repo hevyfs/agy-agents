@@ -24,7 +24,7 @@ class ValidateAgentsTests(unittest.TestCase):
             "AGENTS.md",
         ]:
             shutil.copy2(ROOT / name, destination / name)
-        for directory in ["agents", "rules"]:
+        for directory in ["agents", "rules", "docs"]:
             shutil.copytree(ROOT / directory, destination / directory)
 
     def test_repository_is_valid(self) -> None:
@@ -82,9 +82,9 @@ class ValidateAgentsTests(unittest.TestCase):
                 1,
             )
             path.write_text(text, encoding="utf-8")
-            self.assertIn(
-                "skill-routing.json: workflow lane routing drifted",
-                validate_repository(root),
+            self.assertTrue(
+                any("missing manifest route code-review.spec -> fixer" in error
+                    for error in validate_repository(root))
             )
 
     def test_orchestration_requires_lane_reuse(self) -> None:
@@ -129,6 +129,119 @@ class ValidateAgentsTests(unittest.TestCase):
             self.assertTrue(
                 any("unsupported keys" in error for error in validate_repository(root))
             )
+
+    def test_writer_must_use_sandbox_execution_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "fixer.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "commandExecutionPolicy: sandbox", "commandExecutionPolicy: off", 1
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "executing role must set commandExecutionPolicy: sandbox" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_verifier_must_use_sandbox_execution_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "verifier.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "commandExecutionPolicy: sandbox", "commandExecutionPolicy: off", 1
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "executing role must set commandExecutionPolicy: sandbox" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_unknown_tool_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "explorer.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "  - grep_search\n", "  - grep_search\n  - magic_shell\n", 1
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any("unknown tools" in error for error in validate_repository(root)))
+
+    def test_missing_skill_contract_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "explorer.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "**Skill contract:** allowed model-invoked skills = none.",
+                "**Skill contract removed.**",
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "missing explicit model-invoked skill contract" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_user_invoked_skill_cannot_be_worker_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "skill-routing.json"
+            text = path.read_text(encoding="utf-8").replace(
+                '"fixer": [\n      "verification-planning",\n      "tdd"\n    ]',
+                '"fixer": [\n      "verification-planning",\n      "tdd",\n      "ask-matt"\n    ]',
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "user-invoked skills cannot be worker-allowed" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_implement_spec_requires_branch_for_every_ticket(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "skill-routing.json"
+            text = path.read_text(encoding="utf-8").replace(
+                '"workspace": "branch-always"', '"workspace": "branch-when-parallel"', 1
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "implement-spec.implementer workspace must be branch-always" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_code_review_requires_immutable_parent_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "skill-routing.json"
+            text = path.read_text(encoding="utf-8").replace(
+                '"review_input": "immutable-parent-materialized-snapshot"',
+                '"review_input": "live-workspace"',
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "must consume an immutable parent snapshot" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_runtime_status_cannot_claim_verified_without_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "docs" / "runtime-validation.md"
+            text = path.read_text(encoding="utf-8").replace("Status: NOT RUN", "Status: PASS", 1)
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "must remain NOT RUN" in error for error in validate_repository(root)
+            ))
+
 
 if __name__ == "__main__":
     unittest.main()

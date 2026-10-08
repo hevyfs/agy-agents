@@ -19,6 +19,7 @@ REQUIRED_AGENTS = {
 
 READ_ONLY_ROLES = {"explorer", "librarian", "oracle", "observer", "reviewer"}
 WRITE_ROLES = {"designer", "fixer"}
+EXECUTING_ROLES = {"designer", "fixer", "verifier"}
 PRO_ROLES = {"oracle", "reviewer", "verifier"}
 
 KNOWN_TOOLS = {
@@ -46,36 +47,6 @@ MUTATING_TOOLS = {
     "replace_file_content",
     "multi_replace_file_content",
     "run_command",
-}
-
-EXPECTED_LANES = {
-    "research.background_external_reading": "librarian",
-    "implement.bounded_implementation": "fixer",
-    "implement-spec.implementer": "fixer",
-    "diagnosing-bugs.consequential_decision": "oracle",
-    "prototype.ui_or_interaction": "designer",
-    "visual-evidence.inspect": "observer",
-    "code-review.standards": "reviewer",
-    "code-review.spec": "reviewer",
-    "verification.final": "verifier",
-    "security-audit.refutation": "reviewer",
-}
-
-EXPECTED_ROLE_SKILLS = {
-    "explorer": [],
-    "librarian": ["research"],
-    "oracle": [
-        "diagnosing-bugs",
-        "codebase-design",
-        "domain-modeling",
-        "performance-optimization",
-        "deprecation-and-migration",
-    ],
-    "designer": ["prototype"],
-    "fixer": ["verification-planning", "tdd"],
-    "observer": [],
-    "reviewer": [],
-    "verifier": [],
 }
 
 REQUIRED_USER_SKILLS = {
@@ -135,6 +106,20 @@ def parse_frontmatter(text: str, path: Path) -> tuple[dict, str]:
 def load_manifest(root: Path) -> dict:
     return json.loads((root / "skill-routing.json").read_text(encoding="utf-8"))
 
+
+def declared_role_skills(body: str) -> set[str] | None:
+    match = re.search(
+        r"\\*\\*Skill contract:\\*\\* allowed model-invoked skills = ([^\\n]+)",
+        body,
+    )
+    if not match:
+        return None
+    declaration = match.group(1)
+    if declaration.startswith("none"):
+        return set()
+    return set(re.findall(r"`([a-z0-9-]+)`", declaration))
+
+
 def validate_repository(root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -165,21 +150,66 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(f"skill-routing.json: invalid JSON: {exc}")
             manifest = {}
 
+    routes: dict[str, str] = {}
+    role_skills: dict[str, list[str]] = {}
     if manifest:
         if manifest.get("platform") != "google-antigravity":
             errors.append("skill-routing.json: platform must be google-antigravity")
-        if manifest.get("workflow_lane_agents") != EXPECTED_LANES:
-            errors.append("skill-routing.json: workflow lane routing drifted")
-        if manifest.get("role_model_invoked_skills") != EXPECTED_ROLE_SKILLS:
-            errors.append("skill-routing.json: role skill contracts drifted")
+        if manifest.get("skill_contract_enforcement") != "prompt-guidance-only-until-runtime-verified":
+            errors.append("skill-routing.json: skill contracts must remain prompt guidance until runtime verification exists")
+        if manifest.get("runtime_validation_status") != "unverified-in-antigravity-runtime":
+            errors.append("skill-routing.json: runtime status must remain unverified until evidence is recorded")
+
+        raw_routes = manifest.get("workflow_lane_agents")
+        if not isinstance(raw_routes, dict) or not raw_routes:
+            errors.append("skill-routing.json: workflow_lane_agents must be a non-empty object")
+        else:
+            routes = raw_routes
+            unknown_roles = set(routes.values()) - REQUIRED_AGENTS
+            if unknown_roles:
+                errors.append(f"skill-routing.json: routes target unknown roles: {sorted(unknown_roles)}")
+
+        raw_role_skills = manifest.get("role_model_invoked_skills")
+        if not isinstance(raw_role_skills, dict):
+            errors.append("skill-routing.json: role_model_invoked_skills must be an object")
+        else:
+            role_skills = raw_role_skills
+            if set(role_skills) != REQUIRED_AGENTS:
+                errors.append("skill-routing.json: role skill contracts must cover exactly the eight agents")
+            for role, skills in role_skills.items():
+                if not isinstance(skills, list) or not all(isinstance(skill, str) for skill in skills):
+                    errors.append(f"skill-routing.json: invalid skill list for role {role}")
+
         user_skills = set(manifest.get("user_invoked_skills", []))
         missing = REQUIRED_USER_SKILLS - user_skills
         if missing:
             errors.append(f"skill-routing.json: missing user-invoked skills: {sorted(missing)}")
-        if manifest.get("lane_requirements", {}).get(
-            "security-audit.refutation", {}
-        ).get("access") != "read-only":
+
+        allowed_model_skills = {
+            skill for skills in role_skills.values() if isinstance(skills, list) for skill in skills
+        }
+        overlap = allowed_model_skills & user_skills
+        if overlap:
+            errors.append(f"skill-routing.json: user-invoked skills cannot be worker-allowed: {sorted(overlap)}")
+
+        requirements = manifest.get("lane_requirements", {})
+        if requirements.get("security-audit.refutation", {}).get("access") != "read-only":
             errors.append("skill-routing.json: security-audit.refutation must remain read-only")
+
+        implement_spec = requirements.get("implement-spec.implementer", {})
+        expected_implement_spec = {
+            "workspace": "branch-always",
+            "base": "integration-branch",
+            "scheduling": "dependency-frontier",
+            "integration": "dedicated-merger-subagent",
+        }
+        for key, value in expected_implement_spec.items():
+            if implement_spec.get(key) != value:
+                errors.append(f"skill-routing.json: implement-spec.implementer {key} must be {value}")
+
+        for lane in ("code-review.standards", "code-review.spec"):
+            if requirements.get(lane, {}).get("review_input") != "immutable-parent-materialized-snapshot":
+                errors.append(f"skill-routing.json: {lane} must consume an immutable parent snapshot")
 
     agents_dir = root / "agents"
     found = {p.stem for p in agents_dir.glob("*.md")} if agents_dir.exists() else set()
@@ -188,7 +218,6 @@ def validate_repository(root: Path) -> list[str]:
             f"agents/: expected {sorted(REQUIRED_AGENTS)}, found {sorted(found)}"
         )
 
-    role_skills = manifest.get("role_model_invoked_skills", {}) if manifest else {}
     for role in sorted(REQUIRED_AGENTS & found):
         path = agents_dir / f"{role}.md"
         text = path.read_text(encoding="utf-8")
@@ -224,6 +253,9 @@ def validate_repository(root: Path) -> list[str]:
             if fm.get("commandExecutionPolicy") != "off":
                 errors.append(f"{path}: read-only role must set commandExecutionPolicy: off")
 
+        if role in EXECUTING_ROLES and fm.get("commandExecutionPolicy") != "sandbox":
+            errors.append(f"{path}: executing role must set commandExecutionPolicy: sandbox")
+
         if role in WRITE_ROLES:
             required = {
                 "write_to_file",
@@ -248,13 +280,21 @@ def validate_repository(root: Path) -> list[str]:
 
         if "Never start a user-invoked workflow" not in body:
             errors.append(f"{path}: missing user-invoked workflow boundary")
-        allowed = role_skills.get(role, [])
-        if allowed:
-            for skill in allowed:
-                if f"`{skill}`" not in body:
-                    errors.append(f"{path}: missing allowed skill contract for {skill}")
-        elif "allowed model-invoked skills = none" not in body:
-            errors.append(f"{path}: must declare no model-invoked skills")
+
+        declared = declared_role_skills(body)
+        if declared is None:
+            errors.append(f"{path}: missing explicit model-invoked skill contract")
+        else:
+            expected = set(role_skills.get(role, []))
+            if declared != expected:
+                errors.append(
+                    f"{path}: declared model-invoked skills {sorted(declared)} do not match manifest {sorted(expected)}"
+                )
+
+        if role == "reviewer":
+            for phrase in ["immutable review snapshot", "complete diff", "exact candidate head SHA", "Do not run Git yourself"]:
+                if phrase not in body:
+                    errors.append(f"{path}: missing immutable-review requirement: {phrase}")
 
     rule_path = root / "rules" / "orchestration.md"
     if not rule_path.exists():
@@ -276,17 +316,25 @@ def validate_repository(root: Path) -> list[str]:
             "send_message",
             "Workspace: branch",
             "Never run concurrent writers against the same inherited working tree",
-            "reviewer",
-            "verifier",
+            "active workflow's stricter lifecycle rules always take precedence",
+            "one worktree per ticket implementer",
+            "integration branch",
+            "dedicated merger subagent",
+            "dependency graph",
+            "ready **frontier**",
+            "immutable review snapshot",
+            "git diff <fixed-point>...<head-sha>",
+            "same immutable review snapshot",
+            "prompt guidance, not a demonstrated runtime-enforced skill allowlist",
             "agy-agents internal routing-intent identifiers",
         ]
         for phrase in required_phrases:
             if phrase not in rule_body:
                 errors.append(f"rules/orchestration.md: missing invariant: {phrase}")
 
-        for lane, role in EXPECTED_LANES.items():
+        for lane, role in routes.items():
             if f"`{lane}` → `{role}`" not in rule_body:
-                errors.append(f"rules/orchestration.md: missing route {lane} -> {role}")
+                errors.append(f"rules/orchestration.md: missing manifest route {lane} -> {role}")
 
     agents_md = root / "AGENTS.md"
     if not agents_md.exists():
@@ -307,9 +355,24 @@ def validate_repository(root: Path) -> list[str]:
             "skill-routing.json",
             "my-skills@d5628a28514a06d0b587cf838a983321eff1557a",
             "codex-agents@0eb3b8190e19a55ac4a71620c4e212325940c429",
+            "UNVERIFIED INITIAL CONFIGURATION",
+            "/setup-matt-pocock-skills",
+            "/ask-matt",
+            "<workspace>/.agents/skills/",
+            "~/.gemini/config/skills/",
+            "~/.gemini/antigravity-cli/skills/",
+            "Static validation checks declarations and internal consistency",
         ]:
             if token not in text:
                 errors.append(f"README.md: missing required compatibility/install text: {token}")
+
+    runtime_status = root / "docs" / "runtime-validation.md"
+    if not runtime_status.exists():
+        errors.append("docs/runtime-validation.md: missing")
+    else:
+        text = runtime_status.read_text(encoding="utf-8")
+        if "Status: NOT RUN" not in text:
+            errors.append("docs/runtime-validation.md: must remain NOT RUN until runtime evidence is recorded")
 
     return errors
 

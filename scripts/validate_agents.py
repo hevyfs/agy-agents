@@ -6,6 +6,8 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 REQUIRED_AGENTS = {
     "explorer",
     "librarian",
@@ -60,16 +62,6 @@ REQUIRED_USER_SKILLS = {
     "release",
 }
 
-def parse_scalar(value: str):
-    value = value.strip()
-    if value in {"true", "false"}:
-        return value == "true"
-    if (value.startswith('"') and value.endswith('"')) or (
-        value.startswith("'") and value.endswith("'")
-    ):
-        return value[1:-1]
-    return value
-
 def parse_frontmatter(text: str, path: Path) -> tuple[dict, str]:
     if not text.startswith("---\n"):
         raise ValueError(f"{path}: missing YAML frontmatter")
@@ -78,30 +70,14 @@ def parse_frontmatter(text: str, path: Path) -> tuple[dict, str]:
         raise ValueError(f"{path}: unterminated YAML frontmatter")
     raw = text[4:end]
     body = text[end + 5 :]
-    data: dict[str, object] = {}
-    current_list: str | None = None
-    for line in raw.splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if line.startswith("  - "):
-            if current_list is None:
-                raise ValueError(f"{path}: list item without key")
-            cast = data[current_list]
-            assert isinstance(cast, list)
-            cast.append(parse_scalar(line[4:]))
-            continue
-        if ":" not in line:
-            raise ValueError(f"{path}: invalid frontmatter line: {line}")
-        key, value = line.split(":", 1)
-        key = key.strip()
-        value = value.strip()
-        if not value:
-            data[key] = []
-            current_list = key
-        else:
-            data[key] = parse_scalar(value)
-            current_list = None
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"{path}: invalid YAML frontmatter: {exc}") from exc
+    if not isinstance(data, dict) or not all(isinstance(key, str) for key in data):
+        raise ValueError(f"{path}: YAML frontmatter must be a mapping with string keys")
     return data, body
+
 
 def load_manifest(root: Path) -> dict:
     return json.loads((root / "skill-routing.json").read_text(encoding="utf-8"))
@@ -229,6 +205,8 @@ def validate_repository(root: Path) -> list[str]:
 
         if fm.get("name") != role:
             errors.append(f"{path}: frontmatter name must be {role}")
+        if not isinstance(fm.get("description"), str) or not fm["description"].strip():
+            errors.append(f"{path}: description must be a non-empty string")
         if fm.get("subagent") is not True:
             errors.append(f"{path}: subagent must be true")
         if fm.get("mainAgent") is not False:
@@ -305,6 +283,8 @@ def validate_repository(root: Path) -> list[str]:
             rule_fm, rule_body = parse_frontmatter(rule_text, rule_path)
             if rule_fm.get("trigger") != "always_on":
                 errors.append("rules/orchestration.md: trigger must be always_on")
+            if not isinstance(rule_fm.get("description"), str) or not rule_fm["description"].strip():
+                errors.append("rules/orchestration.md: description must be a non-empty string")
         except ValueError as exc:
             errors.append(str(exc))
             rule_body = ""

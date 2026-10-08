@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "agy-agents",
+  "description": "Specialist multi-agent orchestration for Google Antigravity: discovery, research, architecture, design, implementation, review, and verification."
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "platform": "google-antigravity",
+  "source_codex_agents_revision": "0eb3b8190e19a55ac4a71620c4e212325940c429",
+  "my_skills_revision": "d5628a28514a06d0b587cf838a983321eff1557a",
+  "principle": "Skills define process; agents execute specialist lanes.",
+  "lane_id_semantics": "Keys under workflow_lane_agents are agy-agents internal routing-intent identifiers, not literal IDs exported by my-skills.",
+  "workflow_lane_agents": {
+    "research.background_external_reading": "librarian",
+    "implement.bounded_implementation": "fixer",
+    "implement-spec.implementer": "fixer",
+    "diagnosing-bugs.consequential_decision": "oracle",
+    "prototype.ui_or_interaction": "designer",
+    "visual-evidence.inspect": "observer",
+    "code-review.standards": "reviewer",
+    "code-review.spec": "reviewer",
+    "verification.final": "verifier",
+    "security-audit.refutation": "reviewer"
+  },
+  "lane_requirements": {
+    "security-audit.refutation": {
+      "access": "read-only"
+    },
+    "implement.bounded_implementation": {
+      "workspace": "branch-when-parallel"
+    },
+    "implement-spec.implementer": {
+      "workspace": "branch-always",
+      "base": "integration-branch",
+      "scheduling": "dependency-frontier",
+      "integration": "dedicated-merger-subagent"
+    },
+    "code-review.standards": {
+      "review_input": "immutable-parent-materialized-snapshot"
+    },
+    "code-review.spec": {
+      "review_input": "immutable-parent-materialized-snapshot"
+    }
+  },
+  "role_model_invoked_skills": {
+    "explorer": [],
+    "librarian": [
+      "research"
+    ],
+    "oracle": [
+      "diagnosing-bugs",
+      "codebase-design",
+      "domain-modeling",
+      "performance-optimization",
+      "deprecation-and-migration"
+    ],
+    "designer": [
+      "prototype"
+    ],
+    "fixer": [
+      "verification-planning",
+      "tdd"
+    ],
+    "observer": [],
+    "reviewer": [],
+    "verifier": []
+  },
+  "known_model_invoked_skills": [
+    "prototype",
+    "diagnosing-bugs",
+    "research",
+    "tdd",
+    "domain-modeling",
+    "codebase-design",
+    "code-review",
+    "pr",
+    "wizard",
+    "verification-planning",
+    "issue-audit",
+    "security-audit",
+    "pr-post-audit",
+    "post-refactor",
+    "simplify",
+    "deprecation-and-migration",
+    "ci-cd-and-automation",
+    "observability-and-instrumentation",
+    "documentation-and-adrs",
+    "performance-optimization",
+    "grilling",
+    "writing-for-agents"
+  ],
+  "user_invoked_skills": [
+    "ask-matt",
+    "grill-with-docs",
+    "constraint-driven-development",
+    "triage",
+    "improve-codebase-architecture",
+    "setup-matt-pocock-skills",
+    "to-spec",
+    "to-tickets",
+    "implement",
+    "implement-spec",
+    "wayfinder",
+    "retro",
+    "pr-audit",
+    "github-resolution",
+    "release",
+    "worktrees",
+    "codemap",
+    "clonedeps",
+    "pr-bump",
+    "grill-me",
+    "handoff",
+    "teach",
+    "to-questionnaire",
+    "wait-what",
+    "reflect"
+  ],
+  "worker_rules": [
+    "Never invoke a skill listed in user_invoked_skills.",
+    "If the parent identifies an active skill or workflow that created the lane, execute the assigned lane without invoking that same skill again.",
+    "Invoke only skills listed for the current role in role_model_invoked_skills and only when available.",
+    "If a required skill is unavailable, continue only when role instructions are sufficient; otherwise report the capability gap.",
+    "Do not vendor or copy my-skills bodies into agent prompts."
+  ],
+  "skill_contract_enforcement": "prompt-guidance-only-until-runtime-verified",
+  "runtime_validation_status": "unverified-in-antigravity-runtime"
+}

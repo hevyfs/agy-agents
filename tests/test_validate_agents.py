@@ -245,7 +245,6 @@ class ValidateAgentsTests(unittest.TestCase):
             ))
 
 
-
     def test_frontmatter_parses_quoted_description_with_colon(self) -> None:
         text = (ROOT / "agents" / "designer.md").read_text(encoding="utf-8")
         frontmatter, body = parse_frontmatter(text, ROOT / "agents" / "designer.md")
@@ -290,14 +289,28 @@ class ValidateAgentsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing YAML frontmatter"):
             parse_frontmatter("\ufeff---\nname: test\n---\nBody", Path("test.md"))
 
+    def test_unquoted_off_policy_is_rejected_as_non_string(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "explorer.md"
+            text = path.read_text(encoding="utf-8").replace(
+                'commandExecutionPolicy: "off"',
+                "commandExecutionPolicy: off",
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "read-only role must set commandExecutionPolicy: off" in error
+                for error in validate_repository(root)
+            ))
+
     def test_agent_description_must_be_a_string(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             self.make_fixture(root)
             path = root / "agents" / "explorer.md"
             text = path.read_text(encoding="utf-8")
-            text = text.replace("description: Read-only codebase", "description: [Read-only, codebase]", 1)
-            # Replace the whole description line to keep otherwise-valid YAML.
             lines = text.splitlines()
             lines = ["description: [Read-only, codebase]" if line.startswith("description: ") else line for line in lines]
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")

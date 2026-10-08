@@ -1,6 +1,6 @@
 ---
 name: designer
-description: UI/UX specialist for user-facing design, review, and bounded implementation: layout, hierarchy, responsive behavior, interactions, accessibility, components, and visual polish.
+description: "UI/UX specialist for user-facing design, review, and bounded implementation: layout, hierarchy, responsive behavior, interactions, accessibility, components, and visual polish."
 tools:
   - view_file
   - list_dir

@@ -14,6 +14,7 @@ assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 validate_repository = MODULE.validate_repository
+parse_frontmatter = MODULE.parse_frontmatter
 
 class ValidateAgentsTests(unittest.TestCase):
     def make_fixture(self, destination: Path) -> None:
@@ -243,6 +244,80 @@ class ValidateAgentsTests(unittest.TestCase):
                 "must remain NOT RUN" in error for error in validate_repository(root)
             ))
 
+
+    def test_frontmatter_parses_quoted_description_with_colon(self) -> None:
+        text = (ROOT / "agents" / "designer.md").read_text(encoding="utf-8")
+        frontmatter, body = parse_frontmatter(text, ROOT / "agents" / "designer.md")
+        self.assertEqual("designer", frontmatter["name"])
+        self.assertIn("implementation: layout", frontmatter["description"])
+        self.assertIn("view_file", frontmatter["tools"])
+        self.assertIn("# System Prompt", body)
+
+    def test_unquoted_colon_in_designer_description_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "designer.md"
+            text = path.read_text(encoding="utf-8")
+            text = text.replace('description: "UI/UX', 'description: UI/UX', 1)
+            text = text.replace('and visual polish."', 'and visual polish.', 1)
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "invalid YAML frontmatter" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_unquoted_colon_in_rule_description_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "rules" / "orchestration.md"
+            text = path.read_text(encoding="utf-8").replace(
+                "description: Route ", "description: routing: Route ", 1
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "invalid YAML frontmatter" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_yaml_frontmatter_requires_mapping(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must be a mapping"):
+            parse_frontmatter("---\n- one\n- two\n---\nBody", Path("test.md"))
+
+    def test_yaml_frontmatter_rejects_bom(self) -> None:
+        with self.assertRaisesRegex(ValueError, "missing YAML frontmatter"):
+            parse_frontmatter("\ufeff---\nname: test\n---\nBody", Path("test.md"))
+
+    def test_unquoted_off_policy_is_rejected_as_non_string(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "explorer.md"
+            text = path.read_text(encoding="utf-8").replace(
+                'commandExecutionPolicy: "off"',
+                "commandExecutionPolicy: off",
+                1,
+            )
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any(
+                "read-only role must set commandExecutionPolicy: off" in error
+                for error in validate_repository(root)
+            ))
+
+    def test_agent_description_must_be_a_string(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.make_fixture(root)
+            path = root / "agents" / "explorer.md"
+            text = path.read_text(encoding="utf-8")
+            lines = text.splitlines()
+            lines = ["description: [Read-only, codebase]" if line.startswith("description: ") else line for line in lines]
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            self.assertTrue(any(
+                "description must be a non-empty string" in error
+                for error in validate_repository(root)
+            ))
 
 if __name__ == "__main__":
     unittest.main()

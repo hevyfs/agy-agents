@@ -109,7 +109,7 @@ def load_manifest(root: Path) -> dict:
 
 def declared_role_skills(body: str) -> set[str] | None:
     match = re.search(
-        r"\\*\\*Skill contract:\\*\\* allowed model-invoked skills = ([^\\n]+)",
+        r"\*\*Skill contract:\*\* allowed model-invoked skills = ([^\n]+)",
         body,
     )
     if not match:

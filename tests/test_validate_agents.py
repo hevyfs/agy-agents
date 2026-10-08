@@ -108,13 +108,14 @@ class ValidateAgentsTests(unittest.TestCase):
             self.make_fixture(root)
             path = root / "rules" / "orchestration.md"
             text = path.read_text(encoding="utf-8").replace(
-                "Workspace: branch",
-                "Workspace: inherit",
+                "Never run concurrent writers against the same inherited working tree",
+                "Concurrent writers may share the inherited working tree",
                 1,
             )
             path.write_text(text, encoding="utf-8")
             self.assertTrue(
-                any("Workspace: branch" in error for error in validate_repository(root))
+                any("Never run concurrent writers against the same inherited working tree" in error
+                    for error in validate_repository(root))
             )
 
     def test_plugin_manifest_rejects_unknown_fields(self) -> None:

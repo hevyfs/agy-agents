@@ -138,6 +138,8 @@ The validator checks:
 
 GitHub Actions runs the same checks on pushes and pull requests.
 
+For runtime validation in Antigravity itself, follow [`docs/smoke-test.md`](docs/smoke-test.md).
+
 ## Source model
 
 The role architecture is adapted from `hevyfs/codex-agents`, but Antigravity-specific behavior is implemented natively:

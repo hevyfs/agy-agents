@@ -153,9 +153,10 @@ Small mechanical edits can remain in the primary thread when delegation costs mo
 
 ## Validation
 
-Run:
+Install the validator dependency and run:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
 python scripts/validate_agents.py .
 ```
@@ -163,6 +164,7 @@ python scripts/validate_agents.py .
 The validator checks:
 
 - official plugin manifest shape;
+- strict YAML parsing of agent/rule frontmatter (including rejection of invalid unquoted `: ` in values);
 - all eight agent definitions and supported model/tool names;
 - read-only roles do not expose mutation/terminal tools;
 - high-risk roles remain on `pro`;

@@ -49,7 +49,7 @@ class ValidateAgentsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.make_fixture(root)
-            path = root / "agents" / "oracle.md"
+            path = root / "agents" / "designer.md"
             text = path.read_text(encoding="utf-8").replace(
                 "model: pro", "model: inherit", 1
             )

@@ -8,9 +8,9 @@ tools:
   - grep_search
   - search_web
   - read_url_content
-mainAgent: false
+mainAgent: true
 subagent: true
-model: inherit
+model: flash # gemini-3.8-flash-medium
 commandExecutionPolicy: "off"
 ---
 

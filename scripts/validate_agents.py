@@ -22,7 +22,7 @@ REQUIRED_AGENTS = {
 READ_ONLY_ROLES = {"explorer", "librarian", "oracle", "observer", "reviewer"}
 WRITE_ROLES = {"designer", "fixer"}
 EXECUTING_ROLES = {"designer", "fixer", "verifier"}
-PRO_ROLES = {"oracle", "reviewer", "verifier"}
+PRO_ROLES = {"designer"}
 
 KNOWN_TOOLS = {
     "view_file",
@@ -209,8 +209,8 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(f"{path}: description must be a non-empty string")
         if fm.get("subagent") is not True:
             errors.append(f"{path}: subagent must be true")
-        if fm.get("mainAgent") is not False:
-            errors.append(f"{path}: mainAgent must be false")
+        if fm.get("mainAgent") not in (True, False):
+            errors.append(f"{path}: mainAgent must be a boolean")
         if fm.get("model") not in {"inherit", "flash", "pro"}:
             errors.append(f"{path}: model must be inherit, flash, or pro")
         if role in PRO_ROLES and fm.get("model") != "pro":

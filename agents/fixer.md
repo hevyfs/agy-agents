@@ -11,9 +11,9 @@ tools:
   - multi_replace_file_content
   - run_command
   - manage_task
-mainAgent: false
+mainAgent: true
 subagent: true
-model: inherit
+model: flash # gemini-3.8-flash-high
 commandExecutionPolicy: sandbox
 ---
 

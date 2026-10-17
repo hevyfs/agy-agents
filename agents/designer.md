@@ -11,9 +11,9 @@ tools:
   - multi_replace_file_content
   - run_command
   - manage_task
-mainAgent: false
+mainAgent: true
 subagent: true
-model: inherit
+model: pro # gemini-4-argon-medium
 commandExecutionPolicy: sandbox
 ---
 

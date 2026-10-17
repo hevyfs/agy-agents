@@ -6,9 +6,9 @@ tools:
   - list_dir
   - find_by_name
   - grep_search
-mainAgent: false
+mainAgent: true
 subagent: true
-model: inherit
+model: flash # gemini-3.8-flash-medium
 commandExecutionPolicy: "off"
 ---
 

@@ -17,18 +17,18 @@ The repository is itself an Antigravity **plugin**.
 
 ## Agents
 
-| Agent | Purpose | Effective access | Model |
-| --- | --- | --- | --- |
-| `explorer` | Codebase reconnaissance | read-only tool allowlist | inherit |
-| `librarian` | Current external docs/contracts | local read + web read | inherit |
-| `oracle` | Architecture/high-risk decisions | read-only tool allowlist | pro |
-| `designer` | UI/UX + bounded user-facing implementation | writer | inherit |
-| `fixer` | Bounded implementation | writer | inherit |
-| `observer` | Visual evidence | read-only tool allowlist | inherit |
-| `reviewer` | Independent correctness/regression/security review | read-only tool allowlist | pro |
-| `verifier` | Tests/build/runtime/numerical evidence | command execution, no direct source-edit tools | pro |
+| Agent | Purpose | Effective access | Tier | Target Model |
+| --- | --- | --- | --- | --- |
+| `explorer` | Codebase reconnaissance | read-only tool allowlist | `flash` | `gemini-3.8-flash-medium` |
+| `librarian` | Current external docs/contracts | local read + web read | `flash` | `gemini-3.8-flash-medium` |
+| `oracle` | Architecture/high-risk decisions | read-only tool allowlist | `flash` | `gemini-3.8-flash-high` |
+| `designer` | UI/UX + bounded user-facing implementation | writer | `pro` | `gemini-4-argon-medium` |
+| `fixer` | Bounded implementation | writer | `flash` | `gemini-3.8-flash-high` |
+| `observer` | Visual evidence | read-only tool allowlist | `flash` | `gemini-3.8-flash-medium` |
+| `reviewer` | Independent correctness/regression/security review | read-only tool allowlist | `flash` | `gemini-3.8-flash-high` |
+| `verifier` | Tests/build/runtime/numerical evidence | command execution, no direct source-edit tools | `flash` | `gemini-3.8-flash-high` |
 
-Antigravity exposes model tiers (`inherit`, `flash`, `pro`) rather than Codex reasoning-effort levels. The three highest-risk roles are pinned to `pro`; routine roles inherit the parent model.
+Antigravity exposes native model tiers (`flash`, `pro`, `flash_lite`, `inherit`) rather than raw model IDs. UI/UX visual decisions use `pro` (Gemini 4 Argon), while implementation, review, reconnaissance, and research lanes run on `flash` (Gemini 3.8 Flash).
 
 ## Install
 
@@ -60,6 +60,16 @@ For one workspace only, place it under:
 Then open the Antigravity Customizations/Agents UI (or `/agents` in CLI) and confirm the eight specialists are visible.
 
 > The multi-subagent suite targets Antigravity 2.0 and Antigravity CLI. The legacy Antigravity IDE supports skills/rules/plugins, but custom subagent orchestration is documented for 2.0/CLI.
+
+### Agent discovery structure
+
+Antigravity discovers custom agents packaged inside plugins via:
+
+```text
+agents/<agent-name>/agent.md
+```
+
+Each specialist resides in its own subdirectory containing an `agent.md` file with YAML frontmatter (`mainAgent`, `subagent`, `model`, `commandExecutionPolicy`) and Markdown system prompt. Standalone flat `agents/<agent-name>.md` files are also retained for backwards compatibility.
 
 ## Installing `hevyfs/my-skills`
 

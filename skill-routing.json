@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "platform": "google-antigravity",
-  "source_codex_agents_revision": "0eb3b8190e19a55ac4a71620c4e212325940c429",
+  "source_model": "oh-my-opencode-slim",
   "my_skills_revision": "d5628a28514a06d0b587cf838a983321eff1557a",
   "principle": "Skills define process; agents execute specialist lanes.",
   "lane_id_semantics": "Keys under workflow_lane_agents are agy-agents internal routing-intent identifiers, not literal IDs exported by my-skills.",

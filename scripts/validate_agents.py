@@ -334,7 +334,7 @@ def validate_repository(root: Path) -> list[str]:
             "Antigravity 2.0",
             "skill-routing.json",
             "my-skills@d5628a28514a06d0b587cf838a983321eff1557a",
-            "codex-agents@0eb3b8190e19a55ac4a71620c4e212325940c429",
+            "oh-my-opencode-slim",
             "UNVERIFIED INITIAL CONFIGURATION",
             "/setup-matt-pocock-skills",
             "/ask-matt",

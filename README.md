@@ -1,10 +1,10 @@
 # agy-agents
 
-Native specialist-agent configuration for **Google Antigravity 2.0 and Antigravity CLI**, adapted from the operating model in `hevyfs/codex-agents`.
+Native specialist-agent configuration for **Google Antigravity 2.0 and Antigravity CLI**, based on the operating model in `oh-my-opencode-slim`.
 
 > **Runtime status: UNVERIFIED INITIAL CONFIGURATION.** Static validator/unit-test coverage is green, but PR #1 has not yet been executed end-to-end inside an actual Antigravity runtime. Do not describe plugin discovery, skill restrictions, idle-agent reuse, or worktree orchestration as runtime-proven until `docs/runtime-validation.md` contains recorded evidence.
 
-The goal is not to emulate Codex internals. It preserves the useful engineering model while using Antigravity-native primitives:
+The goal is not to emulate external platform internals. It preserves the useful engineering model while using Antigravity-native primitives:
 
 - the primary session is the orchestrator;
 - narrow specialists own discovery, research, architecture, design, implementation, review, and verification;
@@ -107,7 +107,7 @@ The primary session owns user-invoked workflows. Role-specific skill declaration
 This initial port is reconciled against:
 
 - `my-skills@d5628a28514a06d0b587cf838a983321eff1557a`
-- `codex-agents@0eb3b8190e19a55ac4a71620c4e212325940c429`
+- `oh-my-opencode-slim`
 
 The dotted lane names are **agy-agents internal routing-intent identifiers**, not literal IDs exported by `my-skills`.
 
@@ -190,11 +190,11 @@ For actual runtime validation, follow [`docs/smoke-test.md`](docs/smoke-test.md)
 
 ## Source model
 
-The role architecture is adapted from `hevyfs/codex-agents`, but Antigravity-specific behavior is implemented natively:
+The role architecture is based on `oh-my-opencode-slim`, but Antigravity-specific behavior is implemented natively:
 
-- plugin packaging instead of Codex TOML installation;
+- plugin packaging instead of external TOML configuration;
 - Markdown/YAML custom agents instead of TOML custom agents;
-- explicit Antigravity tool allowlists instead of Codex sandbox modes;
+- explicit Antigravity tool allowlists instead of external sandbox modes;
 - `model: pro` for high-risk roles instead of `xhigh` reasoning effort;
 - `Workspace: branch` worktrees for concurrent writer isolation;
 - `send_message`/idle-agent auto-wake for sticky semantic lanes.
